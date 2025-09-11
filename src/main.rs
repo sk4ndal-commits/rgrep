@@ -1,4 +1,4 @@
-use rgrep::{run, ExitStatus};
+use rgrep::{run, follow, ExitStatus};
 use std::process::ExitCode;
 
 mod cli;
@@ -11,6 +11,15 @@ fn main() -> ExitCode {
             return ExitCode::from(2);
         }
     };
+
+    if cfg.follow {
+        if let Err(err) = follow(&cfg, &inputs) {
+            eprintln!("rgrep follow error: {}", err);
+            return ExitCode::from(2);
+        }
+        // follow never returns on success; but if it returns, treat as success
+        return ExitCode::from(0);
+    }
 
     match run(&cfg, &inputs) {
         Ok(result) => {

@@ -70,6 +70,33 @@ pub fn build_cli() -> Command {
                 .help("Print NUM lines of output context"),
         )
         .arg(
+            Arg::new("recursive")
+                .short('r')
+                .long("recursive")
+                .action(ArgAction::SetTrue)
+                .help("Read all files under each directory, recursively"),
+        )
+        .arg(
+            Arg::new("ignore-case")
+                .short('i')
+                .long("ignore-case")
+                .action(ArgAction::SetTrue)
+                .help("Ignore case distinctions in patterns and data"),
+        )
+        .arg(
+            Arg::new("dotall")
+                .long("dotall")
+                .action(ArgAction::SetTrue)
+                .help("Make '.' match newlines as well (regex dotall mode)"),
+        )
+        .arg(
+            Arg::new("follow")
+                .short('f')
+                .long("follow")
+                .action(ArgAction::SetTrue)
+                .help("Follow file(s) for new lines (like tail -f | grep). Only supported for a single file."),
+        )
+        .arg(
             Arg::new("files")
                 .num_args(0..)
                 .value_name("FILE")
@@ -101,6 +128,11 @@ pub fn parse() -> Result<(Config, Vec<String>), String> {
     cfg.quiet = matches.get_flag("quiet");
     cfg.word = matches.get_flag("word");
     cfg.line = matches.get_flag("line");
+
+    cfg.recursive = matches.get_flag("recursive");
+    cfg.case_insensitive = matches.get_flag("ignore-case");
+    cfg.dotall = matches.get_flag("dotall");
+    cfg.follow = matches.get_flag("follow");
 
     let mut before = to_usize(&matches, "before");
     let mut after = to_usize(&matches, "after");
