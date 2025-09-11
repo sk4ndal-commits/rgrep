@@ -1,0 +1,120 @@
+use clap::{Arg, ArgAction, ArgMatches, Command};
+use rgrep::{Config, Context};
+
+pub fn build_cli() -> Command {
+    Command::new("rgrep")
+        .about("A powerful, feature-rich Rust grep implementation")
+        .arg(
+            Arg::new("pattern")
+                .short('e')
+                .long("regexp")
+                .num_args(1)
+                .action(ArgAction::Append)
+                .help("Pattern to search for (can be used multiple times)"),
+        )
+        .arg(
+            Arg::new("word")
+                .short('w')
+                .long("word-regexp")
+                .action(ArgAction::SetTrue)
+                .help("Select only those lines containing matches that form whole words"),
+        )
+        .arg(
+            Arg::new("line")
+                .short('x')
+                .long("line-regexp")
+                .action(ArgAction::SetTrue)
+                .help("Select only those matches that exactly match the whole line"),
+        )
+        .arg(
+            Arg::new("invert")
+                .short('v')
+                .long("invert-match")
+                .action(ArgAction::SetTrue)
+                .help("Invert the sense of matching, to select non-matching lines"),
+        )
+        .arg(
+            Arg::new("count")
+                .short('c')
+                .long("count")
+                .action(ArgAction::SetTrue)
+                .help("Suppress normal output; instead print a count of matching lines for each input file"),
+        )
+        .arg(
+            Arg::new("quiet")
+                .short('q')
+                .long("quiet")
+                .alias("silent")
+                .action(ArgAction::SetTrue)
+                .help("Suppress all normal output; only exit status is used"),
+        )
+        .arg(
+            Arg::new("after")
+                .short('A')
+                .value_name("NUM")
+                .num_args(1)
+                .help("Print NUM lines of trailing context after matching lines"),
+        )
+        .arg(
+            Arg::new("before")
+                .short('B')
+                .value_name("NUM")
+                .num_args(1)
+                .help("Print NUM lines of leading context before matching lines"),
+        )
+        .arg(
+            Arg::new("context")
+                .short('C')
+                .value_name("NUM")
+                .num_args(1)
+                .help("Print NUM lines of output context"),
+        )
+        .arg(
+            Arg::new("files")
+                .num_args(0..)
+                .value_name("FILE")
+                .help("Input file(s). Use - for stdin"),
+        )
+}
+
+fn to_usize(matches: &ArgMatches, name: &str) -> usize {
+    matches
+        .get_one::<String>(name)
+        .and_then(|s| s.parse::<usize>().ok())
+        .unwrap_or(0)
+}
+
+pub fn parse() -> Result<(Config, Vec<String>), String> {
+    let matches = build_cli().get_matches();
+
+    let mut cfg = Config::default();
+
+    if let Some(pats) = matches.get_many::<String>("pattern") {
+        cfg.patterns = pats.map(|s| s.to_string()).collect();
+    }
+    if cfg.patterns.is_empty() {
+        return Err("rgrep: no pattern provided; use -e PATTERN".into());
+    }
+
+    cfg.invert = matches.get_flag("invert");
+    cfg.count = matches.get_flag("count");
+    cfg.quiet = matches.get_flag("quiet");
+    cfg.word = matches.get_flag("word");
+    cfg.line = matches.get_flag("line");
+
+    let mut before = to_usize(&matches, "before");
+    let mut after = to_usize(&matches, "after");
+    let ctx = to_usize(&matches, "context");
+    if ctx > 0 {
+        before = ctx;
+        after = ctx;
+    }
+    cfg.context = Context { before, after };
+
+    let inputs: Vec<String> = matches
+        .get_many::<String>("files")
+        .map(|vals| vals.map(|s| s.to_string()).collect())
+        .unwrap_or_else(|| Vec::new());
+
+    Ok((cfg, inputs))
+}
