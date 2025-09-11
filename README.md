@@ -1,121 +1,115 @@
-rgrep — A feature-rich grep implemented in Rust
+# rgrep
 
-rgrep is a command-line tool for searching text using regular expressions, written in Rust. It aims to be familiar for grep users while providing clear defaults, useful context printing, colorized matches, recursive search, and a robust follow mode for live-updating files.
+A simple, fast grep-like tool written in Rust. Familiar flags, clear defaults, and a robust follow mode for live logs.
 
-Highlights
-- Multiple patterns with -e
-- Word and full-line matches (-w, -x)
+## Features
+- Multiple patterns (-e)
+- Whole-word (-w) and whole-line (-x) matching
 - Invert matches (-v)
-- Context lines before/after matches (-B, -A, -C)
-- Count-only mode (-c) with single-file friendly output (prints just the number)
+- Context lines before/after (-B, -A, -C)
+- Count-only (-c); with a single file it prints only the number
 - Quiet mode (-q)
-- Recursive directory search (-r)
-- Case-insensitive (-i) and dotall (--) regex options
-- Follow mode (-f) to watch a single log file like tail -f | grep, including proper context handling
+- Recursive search (-r)
+- Ignore case (-i) and dotall (--dotall)
+- Follow a single file (-f) like `tail -f | grep` (with proper context handling)
 - Skips binary files automatically
-- Colorized output for matches (enabled by default)
+- Optional colorized matches (enabled by default)
 
-Installation
-1) Prerequisites: Rust toolchain (cargo and rustc)
-2) Build:
-   - Debug: cargo build
-   - Release: cargo build --release
-3) The binary will be at target/debug/rgrep or target/release/rgrep.
+## Install
+Prerequisite: Rust toolchain (cargo, rustc)
 
-Quick start
-- Search for a pattern in a file:
-  rgrep -e "error" ./app.log
+Build:
+- Debug: `cargo build`
+- Release: `cargo build --release`
 
-- Read from stdin (default when no files are provided):
-  cat app.log | rgrep -e "timeout"
+The binary will be at `target/debug/rgrep` or `target/release/rgrep`.
 
-- Recursive search under a directory:
-  rgrep -r -e "TODO" ./src
+## Quick start
+Search a file:
+```
+rgrep -e "error" ./app.log
+```
 
-- Case-insensitive search:
-  rgrep -i -e "warning" ./logs/*
+Read from stdin:
+```
+cat app.log | rgrep -e "timeout"
+```
 
-- Count-only mode:
-  # Single file prints just the number
-  rgrep -c -e "foo" ./file.txt
-  # Multiple files show file:count per line
-  rgrep -c -e "foo" ./a.txt ./b.txt
+Recursive search:
+```
+rgrep -r -e "TODO" ./src
+```
 
-- Context around matches:
-  # Two lines before and after (-C 2)
-  rgrep -C 2 -e "panic" ./server.log
-  # Only lines after (-A 3) or before (-B 1)
-  rgrep -A 3 -e "START" ./session.log
-  rgrep -B 1 -e "END" ./session.log
+Case-insensitive:
+```
+rgrep -i -e "warning" ./logs/*
+```
 
-- Follow a growing log file (like tail -f | grep):
-  # Note: follow mode supports exactly one regular file and starts reading at EOF.
-  rgrep -f -C 2 -e "ERROR" ./server.log
+Count-only:
+```
+# Single file prints just the number
+rgrep -c -e "foo" ./file.txt
+# Multiple files show file:count per line
+rgrep -c -e "foo" ./a.txt ./b.txt
+```
 
-Behavior notes
-- Count-only single file: When using -c with a single file, rgrep prints only the numeric count, with no file path prefix. With multiple files, it prints file:count per line.
+Context around matches:
+```
+# Two lines before and after (-C 2)
+rgrep -C 2 -e "panic" ./server.log
+# Only after (-A 3) or before (-B 1)
+rgrep -A 3 -e "START" ./session.log
+rgrep -B 1 -e "END" ./session.log
+```
+
+Follow a growing log:
+```
+# Supports exactly one regular file and starts at EOF
+rgrep -f -C 2 -e "ERROR" ./server.log
+```
+
+## Behavior
+- Count-only, single file: prints only the number. With multiple files: `path:count`.
 - Follow mode:
-  - Only one regular file is supported (not stdin, not multiple files).
-  - Starts reading at the end of the file and prints only newly appended lines.
-  - Context (-A/-B/-C) applies to lines appended in the current growth batch only; context does not leak across separate appends.
-  - Matching lines are color-highlighted (if color is enabled); context lines are printed plainly.
-  - rgrep is resilient to transient I/O issues during follow (e.g., log rotation) and will keep retrying.
-- Binary files: rgrep skips binary files automatically.
+  - One regular file only (not stdin; not multiple files)
+  - Starts at end of file; prints newly appended lines only
+  - Context (-A/-B/-C) applies within the current append batch; no cross-batch leakage
+  - Matches may be color-highlighted; context lines are plain
+  - Resilient to transient I/O issues (e.g., rotation)
+- Binary files are skipped.
 
-Exit codes
-- 0: Match found
-- 1: No match
-- 2: Error (invalid arguments, I/O errors, etc.)
+## Exit codes
+- 0 — match found
+- 1 — no match
+- 2 — error (bad args, I/O, etc.)
 
-Command-line reference
-- -e, --regexp PATTERN
-  Pattern to search for (can be used multiple times).
-- -w, --word-regexp
-  Select only those lines containing matches that form whole words.
-- -x, --line-regexp
-  Select only those matches that exactly match the whole line.
-- -v, --invert-match
-  Invert the sense of matching, to select non-matching lines.
-- -c, --count
-  Suppress normal output; instead print a count of matching lines.
-- -q, --quiet (alias: --silent)
-  Suppress all normal output; only exit status is used.
-- -A NUM
-  Print NUM lines of trailing context after matching lines.
-- -B NUM
-  Print NUM lines of leading context before matching lines.
-- -C NUM
-  Print NUM lines of output context (both before and after).
-- -r, --recursive
-  Read all files under each directory, recursively.
-- -i, --ignore-case
-  Ignore case distinctions in patterns and data.
-- --dotall
-  Make '.' match newlines as well (regex dotall mode).
-- -f, --follow
-  Follow a single file for new lines (like tail -f | grep). Only supported for one regular file.
-- FILE ...
-  One or more input files. Use - (dash) to read from stdin.
+## Command-line
+Common options (see `rgrep -h` for full help):
+- `-e, --regexp PATTERN` — pattern (can be used multiple times)
+- `-w, --word-regexp` — whole-word matches
+- `-x, --line-regexp` — whole-line matches
+- `-v, --invert-match` — select non-matching lines
+- `-c, --count` — print count of matching lines
+- `-q, --quiet` — suppress normal output
+- `-A NUM` — trailing context lines
+- `-B NUM` — leading context lines
+- `-C NUM` — both before/after context
+- `-r, --recursive` — recurse into directories
+- `-i, --ignore-case` — ignore case
+- `--dotall` — dot matches newlines
+- `-f, --follow` — follow one file for new lines
+- `FILE ...` — input files; use `-` for stdin
 
-Examples
-- Search multiple patterns:
-  rgrep -e "foo" -e "bar" ./file.txt
+## Development
+Run tests:
+```
+cargo test
+```
 
-- Whole word and full line matches:
-  rgrep -w -e "cat" ./text.txt
-  rgrep -x -e "^OK$" ./status.txt
+Typical workflow:
+- Make changes
+- `cargo build`
+- `cargo test`
 
-- Invert match to show non-matching lines:
-  rgrep -v -e "debug" ./app.log
-
-Development
-- Run the test suite:
-  cargo test
-
-- Suggested workflow:
-  - Make changes
-  - cargo build
-  - cargo test
-
-License
-This project is provided as-is; see repository context or add a LICENSE file if you intend to distribute under a specific license.
+## License
+This project is provided as-is; add a LICENSE file if you intend to distribute under a specific license.
