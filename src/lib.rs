@@ -178,3 +178,121 @@ mod tests {
         assert_eq!(lines, vec!["1:a", "2:b", "3:c"]);
     }
 }
+
+#[cfg(test)]
+mod more_tests {
+    use super::*;
+    use std::io::Cursor;
+    use std::fs;
+
+    fn cfg(patterns: &[&str]) -> Config {
+        Config { patterns: patterns.iter().map(|s| s.to_string()).collect(), ..Default::default() }
+    }
+
+    #[test]
+    fn error_on_empty_patterns() {
+        let cfg = Config::default();
+        let res = run_on_reader(&cfg, Cursor::new(b"hello".as_ref()), None);
+        assert!(res.is_err());
+        assert!(res.err().unwrap().contains("no pattern"));
+    }
+
+    #[test]
+    fn regex_compile_error() {
+        let mut c = Config::default();
+        c.patterns = vec!["(".into()];
+        let res = run_on_reader(&c, Cursor::new("data"), None);
+        assert!(res.is_err());
+    }
+
+    #[test]
+    fn word_boundary_with_punctuation() {
+        let mut c = cfg(&["he"]);
+        c.word = true;
+        c.color = false;
+        let data = "he, she helo\n";
+        let res = run_on_reader(&c, Cursor::new(data), None).unwrap();
+        let lines: Vec<_> = res.output.lines().collect();
+        // Only the line once because only token 'he,' at start counts (same line but printed once)
+        assert_eq!(lines.len(), 1);
+        assert!(lines[0].ends_with("he, she helo"));
+    }
+
+    #[test]
+    fn color_highlighting_included_when_enabled() {
+        let mut c = cfg(&["hello"]);
+        c.color = true; // default, but be explicit
+        let data = "say hello there\n";
+        let res = run_on_reader(&c, Cursor::new(data), None).unwrap();
+        // Expect ANSI escape sequences in output
+        assert!(res.output.contains("\u{1b}["));
+    }
+
+    #[test]
+    fn quiet_no_match_has_empty_output_and_status() {
+        let mut c = cfg(&["zzz"]);
+        c.quiet = true;
+        let res = run_on_reader(&c, Cursor::new("abc\n"), None).unwrap();
+        assert_eq!(res.output, "");
+        assert_eq!(res.status, ExitStatus::NoMatch);
+    }
+
+    #[test]
+    fn count_with_invert_counts_non_matching_lines() {
+        let mut c = cfg(&["x"]);
+        c.count = true;
+        c.invert = true;
+        let td = tempfile::tempdir().unwrap();
+        let p = td.path().join("n.txt");
+        fs::write(&p, b"a\nxb\n\n").unwrap();
+        let res = run(&c, &[p.to_string_lossy().to_string()]).unwrap();
+        // Lines: "a" (non-match), "xb" (match then inverted -> non-match? actually original match true, invert -> false), "" (non-match)
+        // So 2 non-matching lines
+        assert_eq!(res.output.trim(), "2");
+    }
+
+    #[test]
+    fn single_file_line_numbers_present() {
+        let c = cfg(&["bar"]);
+        let data = "foo\nbar\n";
+        let res = run_on_reader(&c, Cursor::new(data), Some("file.txt")).unwrap();
+        assert!(res.output.starts_with("2:"));
+    }
+
+    #[test]
+    fn multi_file_count_includes_file_names() {
+        let mut c = cfg(&["a"]);
+        c.count = true;
+        c.color = false;
+        let td = tempfile::tempdir().unwrap();
+        let p1 = td.path().join("one.txt");
+        let p2 = td.path().join("two.txt");
+        fs::write(&p1, b"a\n\n").unwrap(); // 1 match line
+        fs::write(&p2, b"ba\nca\n").unwrap(); // 2 match lines
+        let res = run(&c, &[p1.to_string_lossy().to_string(), p2.to_string_lossy().to_string()]).unwrap();
+        let mut lines: Vec<_> = res.output.lines().collect();
+        lines.sort();
+        assert_eq!(lines.len(), 2);
+        assert!(lines[0].contains("one.txt:"));
+        assert!(lines[1].contains("two.txt:"));
+    }
+
+    #[test]
+    fn non_existent_file_returns_error() {
+        let c = cfg(&["x"]);
+        let res = run(&c, &["/definitely/not/exist.txt".to_string()]);
+        assert!(res.is_err());
+    }
+
+    #[test]
+    fn after_context_beyond_end_is_safe() {
+        let mut c = cfg(&["last"]);
+        c.context.after = 3;
+        c.color = false;
+        let data = "first\nsecond\nlast\n";
+        let res = run_on_reader(&c, Cursor::new(data), None).unwrap();
+        let lines: Vec<_> = res.output.lines().collect();
+        // Should include last line only, no additional lines beyond EOF
+        assert_eq!(lines, vec!["3:last"]);
+    }
+}

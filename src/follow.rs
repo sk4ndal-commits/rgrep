@@ -88,18 +88,21 @@ fn validate_follow_inputs(cfg: &Config, inputs: &[String]) -> Result<(), String>
 }
 
 fn get_initial_file_position(path: &str) -> Result<u64, String> {
+
+    let one_hundred_milli_seconds = Duration::from_millis(100);
+
     loop {
         match File::open(path) {
             Ok(file) => match file.metadata() {
                 Ok(md) => return Ok(md.len()),
                 Err(_) => {
-                    thread::sleep(Duration::from_millis(100));
+                    thread::sleep(one_hundred_milli_seconds);
                     continue;
                 }
             },
             Err(_) => {
                 // transient error (e.g., file not yet created/rotated)
-                thread::sleep(Duration::from_millis(100));
+                thread::sleep(one_hundred_milli_seconds);
                 continue;
             }
         }
