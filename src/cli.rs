@@ -1,6 +1,17 @@
+//! Command-line argument parsing for the rgrep binary.
+//!
+//! This module defines the CLI interface (flags and options) and provides a simple
+//! `parse()` helper that returns a populated `Config` along with the input paths.
+//! On error (e.g., no pattern provided), `parse()` returns a user-friendly message
+//! suitable for printing to stderr.
+
 use clap::{Arg, ArgAction, ArgMatches, Command};
 use rgrep::{Config, Context};
 
+/// Build the clap Command describing rgrep's CLI.
+///
+/// This is separated for testability and to support `--help`/`--version` handling
+/// by clap. Most consumers should call `parse()` instead.
 pub fn build_cli() -> Command {
     Command::new("rgrep")
         .about("A powerful, feature-rich Rust grep implementation")
@@ -104,6 +115,7 @@ pub fn build_cli() -> Command {
         )
 }
 
+/// Parse an optional numeric argument into usize; returns 0 when absent or invalid.
 fn to_usize(matches: &ArgMatches, name: &str) -> usize {
     matches
         .get_one::<String>(name)
@@ -111,6 +123,10 @@ fn to_usize(matches: &ArgMatches, name: &str) -> usize {
         .unwrap_or(0)
 }
 
+/// Parse CLI arguments into a `Config` and input file list.
+///
+/// Returns `Err(String)` with a human-readable message when validation fails
+/// (e.g., no `-e/--regexp` patterns provided).
 pub fn parse() -> Result<(Config, Vec<String>), String> {
     let matches = build_cli().get_matches();
 

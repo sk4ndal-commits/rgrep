@@ -1,8 +1,18 @@
+//! Regex construction and highlighting utilities.
+//!
+//! These helpers build a unified Regex from the provided patterns and options,
+//! and provide simple ANSI color highlighting of match segments in a line.
+
 use colored::{Colorize, ColoredString};
 use regex::{Regex, RegexBuilder};
 
 use crate::config::Config;
 
+/// Build a Regex from `cfg.patterns` honoring word/line, case, and dotall options.
+///
+/// Multiple patterns are combined with alternation ("|"). Word and line constraints
+/// are applied by wrapping the pattern. Multi-line mode is enabled to allow "^"/"$"
+/// to match per-line.
 pub fn build_regex(cfg: &Config) -> Result<Regex, regex::Error> {
     // Combine multiple patterns using alternation
     let mut pat = cfg
