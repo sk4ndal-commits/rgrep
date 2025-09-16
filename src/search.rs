@@ -28,6 +28,7 @@ pub fn run_on_reader<R: Read>(
     }
 
     let re = build_regex(cfg).map_err(|e| e.to_string())?;
+    let and_matchers = crate::regex_utils::build_and_matchers(cfg).map_err(|e| e.to_string())?;
 
     let lines = read_to_lines(&mut reader).map_err(|e| e.to_string())?;
 
@@ -42,7 +43,11 @@ pub fn run_on_reader<R: Read>(
     let mut match_count = 0usize;
 
     for (idx, raw_line) in lines.iter().enumerate() {
-        let is_match = re.is_match(raw_line);
+        let is_match = if let Some(ref ands) = and_matchers {
+            ands.iter().all(|r| r.is_match(raw_line))
+        } else {
+            re.is_match(raw_line)
+        };
         let final_match = if cfg.invert { !is_match } else { is_match };
 
         if final_match {

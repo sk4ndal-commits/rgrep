@@ -167,8 +167,8 @@ mod tests {
     }
 
     #[test]
-    fn multiple_patterns() {
-        let c = cfg(&["foo", "bar"]);
+    fn pattern_expression_or() {
+        let c = cfg(&["foo|bar"]);
         let data = "x\nbar\ny\n";
         let res = run_on_reader(&c, data.as_bytes(), None).unwrap();
         assert!(res.output.contains("bar"));

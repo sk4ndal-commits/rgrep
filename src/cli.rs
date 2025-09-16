@@ -20,8 +20,8 @@ pub fn build_cli() -> Command {
                 .short('e')
                 .long("regexp")
                 .num_args(1)
-                .action(ArgAction::Append)
-                .help("Pattern to search for (can be used multiple times)"),
+                .action(ArgAction::Set)
+                .help("Pattern expression to search for (use '|' for OR and '&' for AND; only a single -e is allowed)"),
         )
         .arg(
             Arg::new("word")
@@ -132,8 +132,8 @@ pub fn parse() -> Result<(Config, Vec<String>), String> {
 
     let mut cfg = Config::default();
 
-    if let Some(pats) = matches.get_many::<String>("pattern") {
-        cfg.patterns = pats.map(|s| s.to_string()).collect();
+    if let Some(pat) = matches.get_one::<String>("pattern") {
+        cfg.patterns = vec![pat.to_string()];
     }
     if cfg.patterns.is_empty() {
         return Err("rgrep: no pattern provided; use -e PATTERN".into());
