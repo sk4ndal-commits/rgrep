@@ -59,6 +59,13 @@ impl FollowEngine {
     }
 }
 
+/// Follow a single regular file for newly appended lines and print matches as they appear.
+///
+/// Behavior:
+/// - Exactly one regular file must be provided in `inputs` (not `-`).
+/// - Starts reading at end-of-file and processes only new data.
+/// - Respects `Config` options like patterns, case, and context. Context applies within the
+///   current batch of appended lines (no cross-batch leakage).
 pub fn follow(cfg: &Config, inputs: &[String]) -> Result<(), String> {
     validate_follow_inputs(cfg, inputs)?;
     let path = &expand_inputs(cfg, inputs)[0];

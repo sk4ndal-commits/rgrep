@@ -1,6 +1,17 @@
+//! Command-line argument parsing for the rgrep binary.
+//!
+//! This module defines the CLI interface (flags and options) and provides a simple
+//! `parse()` helper that returns a populated `Config` along with the input paths.
+//! On error (e.g., no pattern provided), `parse()` returns a user-friendly message
+//! suitable for printing to stderr.
+
 use clap::{Arg, ArgAction, ArgMatches, Command};
 use rgrep::{Config, Context};
 
+/// Build the clap Command describing rgrep's CLI.
+///
+/// This is separated for testability and to support `--help`/`--version` handling
+/// by clap. Most consumers should call `parse()` instead.
 pub fn build_cli() -> Command {
     Command::new("rgrep")
         .about("A powerful, feature-rich Rust grep implementation")
@@ -9,8 +20,8 @@ pub fn build_cli() -> Command {
                 .short('r')
                 .long("regexp")
                 .num_args(1)
-                .action(ArgAction::Append)
-                .help("Pattern to search for (can be used multiple times)"),
+                .action(ArgAction::Set)
+                .help("Pattern expression to search for (use '|' for OR and '&' for AND; only a single -e is allowed)"),
         )
         .arg(
             Arg::new("word")
@@ -104,6 +115,7 @@ pub fn build_cli() -> Command {
         )
 }
 
+/// Parse an optional numeric argument into usize; returns 0 when absent or invalid.
 fn to_usize(matches: &ArgMatches, name: &str) -> usize {
     matches
         .get_one::<String>(name)
@@ -111,13 +123,17 @@ fn to_usize(matches: &ArgMatches, name: &str) -> usize {
         .unwrap_or(0)
 }
 
+/// Parse CLI arguments into a `Config` and input file list.
+///
+/// Returns `Err(String)` with a human-readable message when validation fails
+/// (e.g., no `-e/--regexp` patterns provided).
 pub fn parse() -> Result<(Config, Vec<String>), String> {
     let matches = build_cli().get_matches();
 
     let mut cfg = Config::default();
 
-    if let Some(pats) = matches.get_many::<String>("pattern") {
-        cfg.patterns = pats.map(|s| s.to_string()).collect();
+    if let Some(pat) = matches.get_one::<String>("pattern") {
+        cfg.patterns = vec![pat.to_string()];
     }
     if cfg.patterns.is_empty() {
         return Err("rgrep: no pattern provided; use -e PATTERN".into());

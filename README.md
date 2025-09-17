@@ -3,7 +3,7 @@
 A simple, fast grep-like tool written in Rust. Familiar flags, clear defaults, and a robust follow mode for live logs.
 
 ## Features
-- Multiple patterns (-e)
+- Pattern expressions with OR (|) and AND (&)
 - Whole-word (-w) and whole-line (-x) matching
 - Invert matches (-v)
 - Context lines before/after (-B, -A, -C)
@@ -33,6 +33,14 @@ rgrep -e "error" ./app.log
 Read from stdin:
 ```
 cat app.log | rgrep -e "timeout"
+```
+
+OR and AND in a single pattern expression:
+```
+# Lines containing "error" OR "warning"
+rgrep -e "error|warning" ./app.log
+# Lines containing both "timeout" AND "retry"
+rgrep -e "timeout&retry" ./app.log
 ```
 
 Recursive search:
@@ -85,7 +93,7 @@ rgrep -f -C 2 -e "ERROR" ./server.log
 
 ## Command-line
 Common options (see `rgrep -h` for full help):
-- `-e, --regexp PATTERN` — pattern (can be used multiple times)
+- `-e, --regexp PATTERN` — single pattern expression (use '|' for OR and '&' for AND)
 - `-w, --word-regexp` — whole-word matches
 - `-x, --line-regexp` — whole-line matches
 - `-v, --invert-match` — select non-matching lines

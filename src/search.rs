@@ -1,20 +1,34 @@
+use rayon::prelude::*;
 use std::collections::VecDeque;
 use std::fmt::Write as _;
 use std::io::Read;
-use rayon::prelude::*;
 
 use crate::config::{Config, ExitStatus, RunResult};
+use crate::fs_utils::{expand_inputs, is_binary_path};
 use crate::io_utils::{open_input, read_to_lines};
 use crate::output::append_formatted_line;
 use crate::regex_utils::{build_regex, highlight_segments};
-use crate::fs_utils::{expand_inputs, is_binary_path};
 
-pub fn run_on_reader<R: Read>(cfg: &Config, mut reader: R, name: Option<&str>) -> Result<RunResult, String> {
+/// Run a search over any `Read` implementor (e.g., a file, stdin, or in-memory buffer).
+///
+/// - `cfg` controls the search behavior (patterns, flags, context, etc.).
+/// - `reader` provides the input text.
+/// - `name` is an optional filename used for prefixes in the formatted output. When `None`,
+///   no filename prefix is added and line numbers start at 1.
+///
+/// Returns a `RunResult` with formatted output (unless `quiet`) and an `ExitStatus` indicating
+/// whether any match was found.
+pub fn run_on_reader<R: Read>(
+    cfg: &Config,
+    mut reader: R,
+    name: Option<&str>,
+) -> Result<RunResult, String> {
     if cfg.patterns.is_empty() {
         return Err("no pattern provided".into());
     }
 
     let re = build_regex(cfg).map_err(|e| e.to_string())?;
+    let and_matchers = crate::regex_utils::build_and_matchers(cfg).map_err(|e| e.to_string())?;
 
     let lines = read_to_lines(&mut reader).map_err(|e| e.to_string())?;
 
@@ -29,7 +43,11 @@ pub fn run_on_reader<R: Read>(cfg: &Config, mut reader: R, name: Option<&str>) -
     let mut match_count = 0usize;
 
     for (idx, raw_line) in lines.iter().enumerate() {
-        let is_match = re.is_match(raw_line);
+        let is_match = if let Some(ref ands) = and_matchers {
+            ands.iter().all(|r| r.is_match(raw_line))
+        } else {
+            re.is_match(raw_line)
+        };
         let final_match = if cfg.invert { !is_match } else { is_match };
 
         if final_match {
@@ -49,7 +67,8 @@ pub fn run_on_reader<R: Read>(cfg: &Config, mut reader: R, name: Option<&str>) -
                 }
             }
             // Print the matching line
-            if cfg.color && !cfg.line { // even if -x, we'll highlight entire line when it matches; but to be precise, highlight matches
+            if cfg.color && !cfg.line {
+                // even if -x, we'll highlight entire line when it matches; but to be precise, highlight matches
                 let hl = highlight_segments(raw_line, &re);
                 append_formatted_line(&mut out, name, idx, &hl, true, cfg.line);
             } else {
@@ -89,15 +108,34 @@ pub fn run_on_reader<R: Read>(cfg: &Config, mut reader: R, name: Option<&str>) -
         }
     }
 
-    let status = if matched_any { ExitStatus::MatchFound } else { ExitStatus::NoMatch };
+    let status = if matched_any {
+        ExitStatus::MatchFound
+    } else {
+        ExitStatus::NoMatch
+    };
 
     if cfg.quiet {
-        Ok(RunResult { output: String::new(), status })
+        Ok(RunResult {
+            output: String::new(),
+            status,
+        })
     } else {
-        Ok(RunResult { output: out, status })
+        Ok(RunResult {
+            output: out,
+            status,
+        })
     }
 }
 
+/// Run a search across input files/paths.
+///
+/// - If `inputs` contains a single "-", stdin is read.
+/// - Directories are traversed when `cfg.recursive` is set.
+/// - Binary files are skipped.
+/// - With a single file and `cfg.count = true`, the output omits the filename prefix.
+///
+/// Returns a `RunResult` with aggregated formatted output (unless `quiet`) and combined
+/// `ExitStatus` reflecting whether any match was found across all inputs.
 pub fn run(cfg: &Config, inputs: &[String]) -> Result<RunResult, String> {
     let files = expand_inputs(cfg, inputs);
     if files.len() == 1 && files[0] == "-" {
@@ -113,7 +151,10 @@ pub fn run(cfg: &Config, inputs: &[String]) -> Result<RunResult, String> {
         .collect();
 
     if files.is_empty() {
-        return Ok(RunResult { output: String::new(), status: ExitStatus::NoMatch });
+        return Ok(RunResult {
+            output: String::new(),
+            status: ExitStatus::NoMatch,
+        });
     }
 
     if files.len() == 1 {
@@ -163,6 +204,13 @@ pub fn run(cfg: &Config, inputs: &[String]) -> Result<RunResult, String> {
         return Err(errs.join("\n"));
     }
 
-    let status = if matched_any { ExitStatus::MatchFound } else { ExitStatus::NoMatch };
-    Ok(RunResult { output: if cfg.quiet { String::new() } else { out }, status })
+    let status = if matched_any {
+        ExitStatus::MatchFound
+    } else {
+        ExitStatus::NoMatch
+    };
+    Ok(RunResult {
+        output: if cfg.quiet { String::new() } else { out },
+        status,
+    })
 }

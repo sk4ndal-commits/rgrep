@@ -1,3 +1,34 @@
+//! rgrep: a simple, fast grep-like library and CLI.
+//!
+//! This crate provides the core search engine used by the rgrep binary, but it can
+//! also be embedded as a library. The public API lets you:
+//! - Configure search behavior via Config (patterns, context, case, etc.).
+//! - Run searches over readers or files (run_on_reader, run).
+//! - Follow a single growing file for new matches (follow).
+//!
+//! Quick example: search a string buffer
+//!
+//! ```no_run
+//! use rgrep::{Config, run_on_reader, ExitStatus};
+//! let mut cfg = Config::default();
+//! cfg.patterns = vec!["error".into()];
+//! let res = run_on_reader(&cfg, "ok\nerror\n".as_bytes(), None).unwrap();
+//! assert_eq!(res.status, ExitStatus::MatchFound);
+//! println!("{}", res.output);
+//! ```
+//!
+//! Quick example: search files
+//!
+//! ```no_run
+//! use rgrep::{Config, run};
+//! let mut cfg = Config::default();
+//! cfg.patterns = vec!["TODO".into()];
+//! let result = run(&cfg, &["./src".into()]).unwrap();
+//! println!("{}", result.output);
+//! ```
+//!
+//! See README for CLI usage examples.
+
 pub mod config;
 pub mod regex_utils;
 pub mod io_utils;
@@ -136,8 +167,8 @@ mod tests {
     }
 
     #[test]
-    fn multiple_patterns() {
-        let c = cfg(&["foo", "bar"]);
+    fn pattern_expression_or() {
+        let c = cfg(&["foo|bar"]);
         let data = "x\nbar\ny\n";
         let res = run_on_reader(&c, data.as_bytes(), None).unwrap();
         assert!(res.output.contains("bar"));
