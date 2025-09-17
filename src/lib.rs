@@ -31,6 +31,7 @@
 
 pub mod config;
 pub mod regex_utils;
+pub mod boolean_parser;
 pub mod io_utils;
 pub mod fs_utils;
 pub mod output;

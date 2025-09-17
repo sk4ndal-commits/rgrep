@@ -7,7 +7,7 @@ use crate::config::{Config, ExitStatus, RunResult};
 use crate::fs_utils::{expand_inputs, is_binary_path};
 use crate::io_utils::{open_input, read_to_lines};
 use crate::output::append_formatted_line;
-use crate::regex_utils::{build_regex, highlight_segments};
+use crate::regex_utils::{build_regex, highlight_segments, parse_boolean_if_complex};
 
 /// Run a search over any `Read` implementor (e.g., a file, stdin, or in-memory buffer).
 ///
@@ -27,8 +27,19 @@ pub fn run_on_reader<R: Read>(
         return Err("no pattern provided".into());
     }
 
-    let re = build_regex(cfg).map_err(|e| e.to_string())?;
-    let and_matchers = crate::regex_utils::build_and_matchers(cfg).map_err(|e| e.to_string())?;
+    // Check for complex Boolean expressions first
+    let boolean_expr = parse_boolean_if_complex(cfg).map_err(|e| e.to_string())?;
+    
+    let (re, and_matchers) = if boolean_expr.is_some() {
+        // For Boolean expressions, we still need a regex for highlighting
+        // Use a simple OR of all patterns for highlighting
+        (build_regex(cfg).map_err(|e| e.to_string())?, None)
+    } else {
+        // Use existing logic
+        let re = build_regex(cfg).map_err(|e| e.to_string())?;
+        let and_matchers = crate::regex_utils::build_and_matchers(cfg).map_err(|e| e.to_string())?;
+        (re, and_matchers)
+    };
 
     let lines = read_to_lines(&mut reader).map_err(|e| e.to_string())?;
 
@@ -43,9 +54,14 @@ pub fn run_on_reader<R: Read>(
     let mut match_count = 0usize;
 
     for (idx, raw_line) in lines.iter().enumerate() {
-        let is_match = if let Some(ref ands) = and_matchers {
+        let is_match = if let Some((ref expr, ref regexes)) = boolean_expr {
+            // Use Boolean expression evaluation
+            expr.matches(raw_line, regexes)
+        } else if let Some(ref ands) = and_matchers {
+            // Use existing AND logic
             ands.iter().all(|r| r.is_match(raw_line))
         } else {
+            // Use simple regex matching
             re.is_match(raw_line)
         };
         let final_match = if cfg.invert { !is_match } else { is_match };

@@ -7,6 +7,7 @@ use colored::{Colorize, ColoredString};
 use regex::{Regex, RegexBuilder};
 
 use crate::config::Config;
+use crate::boolean_parser::{parse_boolean_expression, build_pattern_regexes, BooleanExpr};
 
 fn split_unescaped(input: &str, sep: char) -> Vec<String> {
     let mut parts = Vec::new();
@@ -100,4 +101,28 @@ pub fn highlight_segments(line: &str, re: &Regex) -> String {
         result.push_str(&line[last..]);
     }
     result
+}
+
+/// Check if a pattern contains Boolean operations that require complex parsing
+fn has_complex_boolean_ops(pattern: &str) -> bool {
+    // Check for parentheses or mixed operators
+    pattern.contains('(') || pattern.contains(')') || 
+    (pattern.contains('&') && pattern.contains('|'))
+}
+
+/// Parse Boolean expression if complex, otherwise return None
+pub fn parse_boolean_if_complex(cfg: &Config) -> Result<Option<(BooleanExpr, std::collections::HashMap<String, Regex>)>, String> {
+    if cfg.patterns.is_empty() {
+        return Ok(None);
+    }
+    
+    let raw = cfg.patterns.join("");
+    
+    if has_complex_boolean_ops(&raw) {
+        let expr = parse_boolean_expression(&raw).map_err(|e| format!("Boolean expression parse error: {}", e))?;
+        let regexes = build_pattern_regexes(&expr, cfg).map_err(|e| e.to_string())?;
+        Ok(Some((expr, regexes)))
+    } else {
+        Ok(None)
+    }
 }
