@@ -6,7 +6,7 @@ pub fn build_cli() -> Command {
         .about("A powerful, feature-rich Rust grep implementation")
         .arg(
             Arg::new("pattern")
-                .short('e')
+                .short('r')
                 .long("regexp")
                 .num_args(1)
                 .action(ArgAction::Append)
@@ -71,7 +71,7 @@ pub fn build_cli() -> Command {
         )
         .arg(
             Arg::new("recursive")
-                .short('r')
+                .short('R')
                 .long("recursive")
                 .action(ArgAction::SetTrue)
                 .help("Read all files under each directory, recursively"),
