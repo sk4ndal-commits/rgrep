@@ -7,7 +7,7 @@ use std::time::Duration;
 
 use crate::config::Config;
 use crate::fs_utils::{expand_inputs, is_binary_path};
-use crate::regex_utils::{build_regex, highlight_segments};
+use crate::regex_utils::{build_regex, build_and_matchers, highlight_segments};
 
 #[derive(Debug)]
 struct FollowEngine {
@@ -71,9 +71,10 @@ pub fn follow(cfg: &Config, inputs: &[String]) -> Result<(), String> {
     let path = &expand_inputs(cfg, inputs)[0];
 
     let re = build_regex(cfg).map_err(|e| e.to_string())?;
+    let and_matchers = build_and_matchers(cfg).map_err(|e| e.to_string())?;
     let mut pos = get_initial_file_position(path)?;
 
-    follow_file_changes(cfg, path, &re, &mut pos)
+    follow_file_changes(cfg, path, &re, &and_matchers, &mut pos)
 }
 
 fn validate_follow_inputs(cfg: &Config, inputs: &[String]) -> Result<(), String> {
@@ -120,6 +121,7 @@ fn follow_file_changes(
     cfg: &Config,
     path: &str,
     re: &regex::Regex,
+    and_matchers: &Option<Vec<regex::Regex>>,
     pos: &mut u64,
 ) -> Result<(), String> {
     let before_n = cfg.context.before;
@@ -140,7 +142,7 @@ fn follow_file_changes(
         }
 
         if meta_len > *pos {
-            match process_new_file_content(cfg, path, re, pos, before_n, after_n) {
+            match process_new_file_content(cfg, path, re, and_matchers, pos, before_n, after_n) {
                 Ok(new_pos) => *pos = new_pos,
                 Err(_) => {
                     thread::sleep(Duration::from_millis(100));
@@ -157,6 +159,7 @@ fn process_new_file_content(
     cfg: &Config,
     path: &str,
     re: &regex::Regex,
+    and_matchers: &Option<Vec<regex::Regex>>,
     pos: &u64,
     before_n: usize,
     after_n: usize,
@@ -175,7 +178,7 @@ fn process_new_file_content(
             Ok(0) => break,
             Ok(_) => {
                 let line = buf.trim_end_matches(['\n', '\r']).to_string();
-                process_line(cfg, &mut engine, re, line);
+                process_line(cfg, &mut engine, re, and_matchers, line);
                 buf.clear();
             }
             Err(e) => return Err(e),
@@ -185,8 +188,12 @@ fn process_new_file_content(
     Ok(fs::metadata(path)?.len())
 }
 
-fn process_line(cfg: &Config, engine: &mut FollowEngine, re: &regex::Regex, line: String) {
-    let is_match = re.is_match(&line);
+fn process_line(cfg: &Config, engine: &mut FollowEngine, re: &regex::Regex, and_matchers: &Option<Vec<regex::Regex>>, line: String) {
+    let is_match = if let Some(ands) = and_matchers {
+        ands.iter().all(|r| r.is_match(&line))
+    } else {
+        re.is_match(&line)
+    };
     let final_match = if cfg.invert { !is_match } else { is_match };
 
     let outs = engine.handle_line(line.clone(), final_match);
