@@ -124,9 +124,9 @@ fn to_usize(matches: &ArgMatches, name: &str) -> usize {
 }
 
 /// Parse a list of optional string arguments into a Vec<String>.
-fn get_inputs(matches: &ArgMatches, name: &str) -> Vec<String> {
+fn get_inputs(matches: &ArgMatches) -> Vec<String> {
     matches
-        .get_many::<String>(name)
+        .get_many::<String>("files")
         .map(|vals| vals.map(|s| s.to_string()).collect())
         .unwrap_or_else(|| Vec::new())
 }
@@ -166,7 +166,6 @@ fn try_set_pattern(matches: &ArgMatches, cfg: &mut Config) -> bool {
     !cfg.patterns.is_empty()
 }
 
-
 /// Parse CLI arguments into a `Config` and input file list.
 ///
 /// Returns `Err(String)` with a human-readable message when validation fails
@@ -183,7 +182,7 @@ pub fn parse() -> Result<(Config, Vec<String>), String> {
     set_flags(&matches, &mut cfg);
     set_context(&matches, &mut cfg);
 
-    let inputs: Vec<String> = get_inputs(&matches, "files");
+    let inputs: Vec<String> = get_inputs(&matches);
 
     Ok((cfg, inputs))
 }
