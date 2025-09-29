@@ -136,7 +136,7 @@ pub fn parse() -> Result<(Config, Vec<String>), String> {
         cfg.patterns = vec![pat.to_string()];
     }
     if cfg.patterns.is_empty() {
-        return Err("rgrep: no pattern provided; use -e PATTERN".into());
+        return Err("rgrep: no pattern provided; use -r PATTERN".into());
     }
 
     cfg.invert = matches.get_flag("invert");

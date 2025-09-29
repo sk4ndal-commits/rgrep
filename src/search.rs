@@ -176,11 +176,11 @@ pub fn run(cfg: &Config, inputs: &[String]) -> Result<RunResult, String> {
     if files.len() == 1 {
         let name = files[0].1.clone();
         let reader = open_input(Some(&name)).map_err(|e| e.to_string())?;
-        if cfg.count {
+        return if cfg.count {
             // For count-only with a single file, suppress filename prefix
-            return run_on_reader(cfg, reader, None);
+            run_on_reader(cfg, reader, None)
         } else {
-            return run_on_reader(cfg, reader, Some(&name));
+            run_on_reader(cfg, reader, Some(&name))
         }
     }
 
