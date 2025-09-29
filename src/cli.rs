@@ -123,22 +123,16 @@ fn to_usize(matches: &ArgMatches, name: &str) -> usize {
         .unwrap_or(0)
 }
 
-/// Parse CLI arguments into a `Config` and input file list.
-///
-/// Returns `Err(String)` with a human-readable message when validation fails
-/// (e.g., no `-e/--regexp` patterns provided).
-pub fn parse() -> Result<(Config, Vec<String>), String> {
-    let matches = build_cli().get_matches();
+/// Parse a list of optional string arguments into a Vec<String>.
+fn get_inputs(matches: &ArgMatches) -> Vec<String> {
+    matches
+        .get_many::<String>("files")
+        .map(|vals| vals.map(|s| s.to_string()).collect())
+        .unwrap_or_else(|| Vec::new())
+}
 
-    let mut cfg = Config::default();
-
-    if let Some(pat) = matches.get_one::<String>("pattern") {
-        cfg.patterns = vec![pat.to_string()];
-    }
-    if cfg.patterns.is_empty() {
-        return Err("rgrep: no pattern provided; use -r PATTERN".into());
-    }
-
+/// Set flags from the parsed `ArgMatches`.
+fn set_flags(matches: &ArgMatches, cfg: &mut Config) {
     cfg.invert = matches.get_flag("invert");
     cfg.count = matches.get_flag("count");
     cfg.quiet = matches.get_flag("quiet");
@@ -149,7 +143,10 @@ pub fn parse() -> Result<(Config, Vec<String>), String> {
     cfg.case_insensitive = matches.get_flag("ignore-case");
     cfg.dotall = matches.get_flag("dotall");
     cfg.follow = matches.get_flag("follow");
+}
 
+/// Set context from the parsed `ArgMatches`.
+fn set_context(matches: &ArgMatches, cfg: &mut Config) {
     let mut before = to_usize(&matches, "before");
     let mut after = to_usize(&matches, "after");
     let ctx = to_usize(&matches, "context");
@@ -158,11 +155,34 @@ pub fn parse() -> Result<(Config, Vec<String>), String> {
         after = ctx;
     }
     cfg.context = Context { before, after };
+}
 
-    let inputs: Vec<String> = matches
-        .get_many::<String>("files")
-        .map(|vals| vals.map(|s| s.to_string()).collect())
-        .unwrap_or_else(|| Vec::new());
+/// Tries setting the pattern from the cmd args, returns true if a pattern was set else false.
+fn try_set_pattern(matches: &ArgMatches, cfg: &mut Config) -> bool {
+    if let Some(pattern) = matches.get_one::<String>("pattern") {
+        cfg.patterns = vec![pattern.to_string()];
+    }
+
+    !cfg.patterns.is_empty()
+}
+
+/// Parse CLI arguments into a `Config` and input file list.
+///
+/// Returns `Err(String)` with a human-readable message when validation fails
+/// (e.g., no `-e/--regexp` patterns provided).
+pub fn parse() -> Result<(Config, Vec<String>), String> {
+    let matches = build_cli().get_matches();
+
+    let mut cfg = Config::default();
+
+    if !try_set_pattern(&matches, &mut cfg) {
+        return Err("rgrep: no pattern provided; use -r PATTERN".into());
+    }
+
+    set_flags(&matches, &mut cfg);
+    set_context(&matches, &mut cfg);
+
+    let inputs: Vec<String> = get_inputs(&matches);
 
     Ok((cfg, inputs))
 }
