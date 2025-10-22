@@ -135,6 +135,7 @@ impl BooleanParser {
             Ok(expr)
         } else {
             // Parse pattern until we hit an operator or end
+            // Patterns can contain spaces, so we don't stop at whitespace
             let mut pattern = String::new();
             let mut escaped = false;
             
@@ -153,13 +154,17 @@ impl BooleanParser {
                     continue;
                 }
                 
-                if ch == '&' || ch == '|' || ch == ')' || ch.is_whitespace() {
+                // Stop only at operators or closing parenthesis
+                if ch == '&' || ch == '|' || ch == ')' {
                     break;
                 }
                 
                 pattern.push(ch);
                 self.advance();
             }
+
+            // Trim trailing whitespace from pattern
+            let pattern = pattern.trim_end().to_string();
 
             if pattern.is_empty() {
                 return Err("Expected pattern".to_string());
