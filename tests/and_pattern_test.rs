@@ -24,18 +24,24 @@ fn test_and_pattern_matching() {
     let cfg = create_test_config("LineConnectDriver_&oSTART");
     let reader = Cursor::new(test_data);
     let result = rgrep::run_on_reader(&cfg, reader, None).unwrap();
-    
+
     // Should find exactly 1 match (the line containing both patterns)
     let line_count = result.output.lines().count();
     assert_eq!(line_count, 1, "AND pattern should match exactly 1 line");
-    assert!(result.output.contains("oSTART"), "Output should contain oSTART");
-    assert!(result.output.contains("LineConnectDriver_"), "Output should contain LineConnectDriver_");
+    assert!(
+        result.output.contains("oSTART"),
+        "Output should contain oSTART"
+    );
+    assert!(
+        result.output.contains("LineConnectDriver_"),
+        "Output should contain LineConnectDriver_"
+    );
 
     // Test single pattern - should match multiple lines
     let cfg = create_test_config("LineConnectDriver_");
     let reader = Cursor::new(test_data);
     let result = rgrep::run_on_reader(&cfg, reader, None).unwrap();
-    
+
     // Should find 9 matches (all lines with LineConnectDriver_)
     let line_count = result.output.lines().count();
     assert_eq!(line_count, 9, "Single pattern should match 9 lines");
@@ -44,7 +50,7 @@ fn test_and_pattern_matching() {
     let cfg = create_test_config("LineConnectDriver_|oSTART");
     let reader = Cursor::new(test_data);
     let result = rgrep::run_on_reader(&cfg, reader, None).unwrap();
-    
+
     // Should find 9 matches (same as LineConnectDriver_ alone since oSTART only appears with LineConnectDriver_)
     let line_count = result.output.lines().count();
     assert_eq!(line_count, 9, "OR pattern should match 9 lines");
@@ -53,38 +59,47 @@ fn test_and_pattern_matching() {
     let cfg = create_test_config("LineConnectDriver_&NONEXISTENT");
     let reader = Cursor::new(test_data);
     let result = rgrep::run_on_reader(&cfg, reader, None).unwrap();
-    
+
     // Should find 0 matches
     let line_count = result.output.lines().filter(|l| !l.is_empty()).count();
-    assert_eq!(line_count, 0, "AND pattern with non-existent term should match 0 lines");
+    assert_eq!(
+        line_count, 0,
+        "AND pattern with non-existent term should match 0 lines"
+    );
 }
 
 #[test]
 fn test_and_pattern_case_insensitive() {
     let test_data = "Hello World\nHELLO WORLD\nhello mars\nGoodbye";
-    
+
     let mut cfg = create_test_config("hello&world");
     cfg.case_insensitive = true;
-    
+
     let reader = Cursor::new(test_data);
     let result = rgrep::run_on_reader(&cfg, reader, None).unwrap();
-    
+
     // Should find 2 matches (Hello World and HELLO WORLD - both have hello and world)
     let line_count = result.output.lines().count();
-    assert_eq!(line_count, 2, "Case insensitive AND pattern should match 2 lines");
+    assert_eq!(
+        line_count, 2,
+        "Case insensitive AND pattern should match 2 lines"
+    );
 }
 
 #[test]
 fn test_and_pattern_with_word_boundaries() {
     let test_data = "test word\ntestword\nword test\nwordtest";
-    
+
     let mut cfg = create_test_config("test&word");
     cfg.word = true;
-    
+
     let reader = Cursor::new(test_data);
     let result = rgrep::run_on_reader(&cfg, reader, None).unwrap();
-    
+
     // Should find 2 matches (only lines where both "test" and "word" appear as whole words)
     let line_count = result.output.lines().count();
-    assert_eq!(line_count, 2, "Word boundary AND pattern should match 2 lines");
+    assert_eq!(
+        line_count, 2,
+        "Word boundary AND pattern should match 2 lines"
+    );
 }

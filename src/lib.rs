@@ -29,18 +29,18 @@
 //!
 //! See README for CLI usage examples.
 
-pub mod config;
-pub mod regex_utils;
 pub mod boolean_parser;
-pub mod io_utils;
-pub mod fs_utils;
-pub mod output;
-pub mod search;
+pub mod config;
 pub mod follow;
+pub mod fs_utils;
+pub mod io_utils;
+pub mod output;
+pub mod regex_utils;
+pub mod search;
 
 pub use config::{Config, Context, ExitStatus, RunResult};
-pub use search::{run_on_reader, run};
 pub use follow::follow;
+pub use search::{run, run_on_reader};
 
 // -----------------------
 // Tests
@@ -48,11 +48,14 @@ pub use follow::follow;
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::io::Cursor;
     use std::fs;
+    use std::io::Cursor;
 
     fn cfg(patterns: &[&str]) -> Config {
-        Config { patterns: patterns.iter().map(|s| s.to_string()).collect(), ..Default::default() }
+        Config {
+            patterns: patterns.iter().map(|s| s.to_string()).collect(),
+            ..Default::default()
+        }
     }
 
     #[test]
@@ -147,7 +150,10 @@ mod tests {
         let p2 = td.path().join("b.txt");
         std::fs::write(&p1, b"one\nnone\n").unwrap(); // 1 match line
         std::fs::write(&p2, b"two\nzero\n").unwrap(); // 2 lines with 'o' each line, but counting lines -> 2 matches
-        let inputs = vec![p1.to_string_lossy().to_string(), p2.to_string_lossy().to_string()];
+        let inputs = vec![
+            p1.to_string_lossy().to_string(),
+            p2.to_string_lossy().to_string(),
+        ];
         let res = run(&c, &inputs).unwrap();
         let out = res.output.trim();
         // Expect two lines with filename prefixes
@@ -214,11 +220,14 @@ mod tests {
 #[cfg(test)]
 mod more_tests {
     use super::*;
-    use std::io::Cursor;
     use std::fs;
+    use std::io::Cursor;
 
     fn cfg(patterns: &[&str]) -> Config {
-        Config { patterns: patterns.iter().map(|s| s.to_string()).collect(), ..Default::default() }
+        Config {
+            patterns: patterns.iter().map(|s| s.to_string()).collect(),
+            ..Default::default()
+        }
     }
 
     #[test]
@@ -301,7 +310,14 @@ mod more_tests {
         let p2 = td.path().join("two.txt");
         fs::write(&p1, b"a\n\n").unwrap(); // 1 match line
         fs::write(&p2, b"ba\nca\n").unwrap(); // 2 match lines
-        let res = run(&c, &[p1.to_string_lossy().to_string(), p2.to_string_lossy().to_string()]).unwrap();
+        let res = run(
+            &c,
+            &[
+                p1.to_string_lossy().to_string(),
+                p2.to_string_lossy().to_string(),
+            ],
+        )
+        .unwrap();
         let mut lines: Vec<_> = res.output.lines().collect();
         lines.sort();
         assert_eq!(lines.len(), 2);

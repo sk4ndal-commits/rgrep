@@ -3,11 +3,11 @@
 //! These helpers build a unified Regex from the provided patterns and options,
 //! and provide simple ANSI color highlighting of match segments in a line.
 
-use colored::{Colorize, ColoredString};
+use colored::{ColoredString, Colorize};
 use regex::{Regex, RegexBuilder};
 
+use crate::boolean_parser::{BooleanExpr, build_pattern_regexes, parse_boolean_expression};
 use crate::config::Config;
-use crate::boolean_parser::{parse_boolean_expression, build_pattern_regexes, BooleanExpr};
 
 fn split_unescaped(input: &str, sep: char) -> Vec<String> {
     let mut parts = Vec::new();
@@ -42,7 +42,11 @@ fn split_unescaped(input: &str, sep: char) -> Vec<String> {
 /// used as-is (multiple `|` inside are treated by the regex engine).
 pub fn build_regex(cfg: &Config) -> Result<Regex, regex::Error> {
     let raw = cfg.patterns.join("");
-    let parts = if raw.contains('&') { Some(split_unescaped(&raw, '&')) } else { None };
+    let parts = if raw.contains('&') {
+        Some(split_unescaped(&raw, '&'))
+    } else {
+        None
+    };
 
     let mut pat = if let Some(ps) = &parts {
         ps.iter().map(|s| s.as_str()).collect::<Vec<_>>().join("|")
@@ -60,8 +64,12 @@ pub fn build_regex(cfg: &Config) -> Result<Regex, regex::Error> {
 
     let mut builder = RegexBuilder::new(&pat);
     builder.multi_line(true);
-    if cfg.case_insensitive { builder.case_insensitive(true); }
-    if cfg.dotall { builder.dot_matches_new_line(true); }
+    if cfg.case_insensitive {
+        builder.case_insensitive(true);
+    }
+    if cfg.dotall {
+        builder.dot_matches_new_line(true);
+    }
     builder.build()
 }
 
@@ -74,12 +82,18 @@ pub fn build_and_matchers(cfg: &Config) -> Result<Option<Vec<Regex>>, regex::Err
     let parts = split_unescaped(&raw, '&');
     let mut regs = Vec::with_capacity(parts.len());
     for mut p in parts {
-        if cfg.word { p = format!("\\b(?:{})\\b", p); }
+        if cfg.word {
+            p = format!("\\b(?:{})\\b", p);
+        }
         // Do NOT apply ^...$ for -x here; AND of full-line matches is nearly always impossible.
         let mut b = RegexBuilder::new(&p);
         b.multi_line(true);
-        if cfg.case_insensitive { b.case_insensitive(true); }
-        if cfg.dotall { b.dot_matches_new_line(true); }
+        if cfg.case_insensitive {
+            b.case_insensitive(true);
+        }
+        if cfg.dotall {
+            b.dot_matches_new_line(true);
+        }
         regs.push(b.build()?);
     }
     Ok(Some(regs))
@@ -106,20 +120,24 @@ pub fn highlight_segments(line: &str, re: &Regex) -> String {
 /// Check if a pattern contains Boolean operations that require complex parsing
 fn has_complex_boolean_ops(pattern: &str) -> bool {
     // Check for parentheses or mixed operators
-    pattern.contains('(') || pattern.contains(')') || 
-    (pattern.contains('&') && pattern.contains('|'))
+    pattern.contains('(')
+        || pattern.contains(')')
+        || (pattern.contains('&') && pattern.contains('|'))
 }
 
 /// Parse Boolean expression if complex, otherwise return None
-pub fn parse_boolean_if_complex(cfg: &Config) -> Result<Option<(BooleanExpr, std::collections::HashMap<String, Regex>)>, String> {
+pub fn parse_boolean_if_complex(
+    cfg: &Config,
+) -> Result<Option<(BooleanExpr, std::collections::HashMap<String, Regex>)>, String> {
     if cfg.patterns.is_empty() {
         return Ok(None);
     }
-    
+
     let raw = cfg.patterns.join("");
-    
+
     if has_complex_boolean_ops(&raw) {
-        let expr = parse_boolean_expression(&raw).map_err(|e| format!("Boolean expression parse error: {}", e))?;
+        let expr = parse_boolean_expression(&raw)
+            .map_err(|e| format!("Boolean expression parse error: {}", e))?;
         let regexes = build_pattern_regexes(&expr, cfg).map_err(|e| e.to_string())?;
         Ok(Some((expr, regexes)))
     } else {

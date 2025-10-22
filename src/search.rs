@@ -160,7 +160,8 @@ fn parse_ts_from_formatted_line(line: &str) -> Option<(i32, i32, i32, i32, i32, 
     };
     // Regex for timestamps: YYYY-MM-DD[ T]HH:MM:SS(.fraction)? (timezone ignored)
     // Compile regex on each call; acceptable for minimal change. Pattern kept simple.
-    let re = Regex::new(r"(?x)
+    let re = Regex::new(
+        r"(?x)
         (?P<y>\d{4})-
         (?P<m>\d{2})-
         (?P<d>\d{2})
@@ -169,7 +170,9 @@ fn parse_ts_from_formatted_line(line: &str) -> Option<(i32, i32, i32, i32, i32, 
         (?P<min>\d{2}):
         (?P<s>\d{2})
         (?:\.(?P<frac>\d{1,9}))?
-    ").ok()?;
+    ",
+    )
+    .ok()?;
     if let Some(caps) = re.captures(content) {
         let y: i32 = caps.name("y")?.as_str().parse().ok()?;
         let m: i32 = caps.name("m")?.as_str().parse().ok()?;
@@ -182,7 +185,9 @@ fn parse_ts_from_formatted_line(line: &str) -> Option<(i32, i32, i32, i32, i32, 
         if !frac_str.is_empty() {
             // Normalize to nanoseconds by right-padding with zeros up to 9 digits
             let mut ns = String::from(frac_str);
-            while ns.len() < 9 { ns.push('0'); }
+            while ns.len() < 9 {
+                ns.push('0');
+            }
             // Truncate if more than 9
             let ns = &ns[..9];
             nanos = ns.parse().unwrap_or(0);
@@ -193,8 +198,20 @@ fn parse_ts_from_formatted_line(line: &str) -> Option<(i32, i32, i32, i32, i32, 
 }
 
 // Helper: Collect all lines with optional parsed timestamps from per-file outputs.
-fn collect_all_lines(outputs_per_file: &[(usize, String)]) -> Vec<(Option<(i32,i32,i32,i32,i32,i32,i32)>, usize, usize, String)> {
-    let mut all_lines: Vec<(Option<(i32,i32,i32,i32,i32,i32,i32)>, usize, usize, String)> = Vec::new();
+fn collect_all_lines(
+    outputs_per_file: &[(usize, String)],
+) -> Vec<(
+    Option<(i32, i32, i32, i32, i32, i32, i32)>,
+    usize,
+    usize,
+    String,
+)> {
+    let mut all_lines: Vec<(
+        Option<(i32, i32, i32, i32, i32, i32, i32)>,
+        usize,
+        usize,
+        String,
+    )> = Vec::new();
     for (file_idx, s) in outputs_per_file {
         for (line_idx, line) in s.lines().enumerate() {
             let ts = parse_ts_from_formatted_line(line);
@@ -205,7 +222,14 @@ fn collect_all_lines(outputs_per_file: &[(usize, String)]) -> Vec<(Option<(i32,i
 }
 
 // Helper: Merge lines chronologically if every line has a timestamp; otherwise return None.
-fn merge_chronologically(mut all_lines: Vec<(Option<(i32,i32,i32,i32,i32,i32,i32)>, usize, usize, String)>) -> Option<String> {
+fn merge_chronologically(
+    mut all_lines: Vec<(
+        Option<(i32, i32, i32, i32, i32, i32, i32)>,
+        usize,
+        usize,
+        String,
+    )>,
+) -> Option<String> {
     if all_lines.is_empty() || all_lines.iter().any(|(ts, _, _, _)| ts.is_none()) {
         return None;
     }
@@ -213,9 +237,13 @@ fn merge_chronologically(mut all_lines: Vec<(Option<(i32,i32,i32,i32,i32,i32,i32
         let ka = a.0.unwrap();
         let kb = b.0.unwrap();
         let ord = ka.cmp(&kb);
-        if ord != std::cmp::Ordering::Equal { return ord; }
+        if ord != std::cmp::Ordering::Equal {
+            return ord;
+        }
         let ord2 = a.1.cmp(&b.1);
-        if ord2 != std::cmp::Ordering::Equal { return ord2; }
+        if ord2 != std::cmp::Ordering::Equal {
+            return ord2;
+        }
         a.2.cmp(&b.2)
     });
     let mut merged = String::new();
@@ -264,7 +292,7 @@ pub fn run(cfg: &Config, inputs: &[String]) -> Result<RunResult, String> {
             run_on_reader(cfg, reader, None)
         } else {
             run_on_reader(cfg, reader, Some(&name))
-        }
+        };
     }
 
     // Parallel processing across files; preserve input order in aggregation
@@ -304,15 +332,29 @@ pub fn run(cfg: &Config, inputs: &[String]) -> Result<RunResult, String> {
 
     // If quiet, no need to build output at all
     if cfg.quiet {
-        let status = if matched_any { ExitStatus::MatchFound } else { ExitStatus::NoMatch };
-        return Ok(RunResult { output: String::new(), status });
+        let status = if matched_any {
+            ExitStatus::MatchFound
+        } else {
+            ExitStatus::NoMatch
+        };
+        return Ok(RunResult {
+            output: String::new(),
+            status,
+        });
     }
 
     // In count mode, just concatenate as-before (no chronological meaning)
     if cfg.count {
         let out = concat_outputs(outputs_per_file);
-        let status = if matched_any { ExitStatus::MatchFound } else { ExitStatus::NoMatch };
-        return Ok(RunResult { output: out, status });
+        let status = if matched_any {
+            ExitStatus::MatchFound
+        } else {
+            ExitStatus::NoMatch
+        };
+        return Ok(RunResult {
+            output: out,
+            status,
+        });
     }
 
     // Try to chronologically merge lines across files by timestamp in the content.
@@ -322,6 +364,13 @@ pub fn run(cfg: &Config, inputs: &[String]) -> Result<RunResult, String> {
         None => concat_outputs(outputs_per_file),
     };
 
-    let status = if matched_any { ExitStatus::MatchFound } else { ExitStatus::NoMatch };
-    Ok(RunResult { output: out, status })
+    let status = if matched_any {
+        ExitStatus::MatchFound
+    } else {
+        ExitStatus::NoMatch
+    };
+    Ok(RunResult {
+        output: out,
+        status,
+    })
 }

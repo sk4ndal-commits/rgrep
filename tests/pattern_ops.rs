@@ -1,4 +1,4 @@
-use rgrep::{run_on_reader, Config, ExitStatus};
+use rgrep::{Config, ExitStatus, run_on_reader};
 use std::io::Cursor;
 
 #[test]

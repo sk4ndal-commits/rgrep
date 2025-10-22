@@ -27,7 +27,9 @@ impl TestEngine {
         let line = line.to_string();
         if is_match {
             if self.before_n > 0 {
-                for b in &self.before_buf { out.push(b.clone()); }
+                for b in &self.before_buf {
+                    out.push(b.clone());
+                }
             }
             out.push(line.clone());
             self.after_remaining = self.after_n;
@@ -36,7 +38,9 @@ impl TestEngine {
             out.push(line.clone());
             self.after_remaining -= 1;
         } else if self.before_n > 0 {
-            if self.before_buf.len() == self.before_n { self.before_buf.pop_front(); }
+            if self.before_buf.len() == self.before_n {
+                self.before_buf.pop_front();
+            }
             self.before_buf.push_back(line.clone());
         }
         out
@@ -44,13 +48,20 @@ impl TestEngine {
 }
 
 fn cfg() -> Config {
-    Config { patterns: vec!["hund".to_string()], color: false, ..Default::default() }
+    Config {
+        patterns: vec!["hund".to_string()],
+        color: false,
+        ..Default::default()
+    }
 }
 
 #[test]
 fn follow_c_prints_before_and_match() {
     let mut c = cfg();
-    c.context = Context { before: 2, after: 2 };
+    c.context = Context {
+        before: 2,
+        after: 2,
+    };
 
     let mut eng = TestEngine::new(c.context.before, c.context.after);
     let seq = ["affe", "baer", "hund"]; // appended lines
@@ -67,7 +78,10 @@ fn follow_c_prints_before_and_match() {
 #[test]
 fn follow_b_prints_before_and_match() {
     let mut c = cfg();
-    c.context = Context { before: 2, after: 0 };
+    c.context = Context {
+        before: 2,
+        after: 0,
+    };
 
     let mut eng = TestEngine::new(c.context.before, c.context.after);
     let seq = ["affe", "baer", "hund"]; // appended lines
@@ -84,7 +98,10 @@ fn follow_b_prints_before_and_match() {
 #[test]
 fn follow_a_prints_match_and_after() {
     let mut c = cfg();
-    c.context = Context { before: 0, after: 2 };
+    c.context = Context {
+        before: 0,
+        after: 2,
+    };
 
     let mut eng = TestEngine::new(c.context.before, c.context.after);
     let seq = ["hund", "affe", "baer"]; // appended lines
@@ -97,7 +114,6 @@ fn follow_a_prints_match_and_after() {
 
     assert_eq!(out, vec!["hund", "affe", "baer"]);
 }
-
 
 #[test]
 fn follow_context_scoped_per_batch_c2() {

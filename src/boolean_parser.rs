@@ -2,14 +2,14 @@
 //!
 //! This module provides parsing and evaluation of Boolean expressions with patterns,
 //! supporting '&' (AND), '|' (OR), and parentheses for grouping.
-//! 
+//!
 //! Examples:
 //! - `pattern1&pattern2` - both patterns must match
 //! - `pattern1|pattern2` - either pattern must match  
 //! - `pattern1&(pattern2|pattern3)` - pattern1 AND (pattern2 OR pattern3)
 
-use regex::{Regex, RegexBuilder};
 use crate::config::Config;
+use regex::{Regex, RegexBuilder};
 
 #[derive(Debug, Clone)]
 pub enum BooleanExpr {
@@ -138,7 +138,7 @@ impl BooleanParser {
             // Patterns can contain spaces, so we don't stop at whitespace
             let mut pattern = String::new();
             let mut escaped = false;
-            
+
             while let Some(ch) = self.current_char() {
                 if escaped {
                     pattern.push(ch);
@@ -146,19 +146,19 @@ impl BooleanParser {
                     self.advance();
                     continue;
                 }
-                
+
                 if ch == '\\' {
                     pattern.push(ch);
                     escaped = true;
                     self.advance();
                     continue;
                 }
-                
+
                 // Stop only at operators or closing parenthesis
                 if ch == '&' || ch == '|' || ch == ')' {
                     break;
                 }
-                
+
                 pattern.push(ch);
                 self.advance();
             }
@@ -185,7 +185,7 @@ pub fn build_pattern_regexes(
 
     for pattern in patterns {
         let mut regex_pattern = pattern.clone();
-        
+
         // Apply word/line constraints
         if cfg.word {
             regex_pattern = format!("\\b(?:{})\\b", regex_pattern);
@@ -226,15 +226,13 @@ mod tests {
     fn test_and_expression() {
         let expr = parse_boolean_expression("hello&world").unwrap();
         match expr {
-            BooleanExpr::And(left, right) => {
-                match (left.as_ref(), right.as_ref()) {
-                    (BooleanExpr::Pattern(l), BooleanExpr::Pattern(r)) => {
-                        assert_eq!(l, "hello");
-                        assert_eq!(r, "world");
-                    }
-                    _ => panic!("Expected pattern nodes"),
+            BooleanExpr::And(left, right) => match (left.as_ref(), right.as_ref()) {
+                (BooleanExpr::Pattern(l), BooleanExpr::Pattern(r)) => {
+                    assert_eq!(l, "hello");
+                    assert_eq!(r, "world");
                 }
-            }
+                _ => panic!("Expected pattern nodes"),
+            },
             _ => panic!("Expected AND expression"),
         }
     }
@@ -243,15 +241,13 @@ mod tests {
     fn test_or_expression() {
         let expr = parse_boolean_expression("hello|world").unwrap();
         match expr {
-            BooleanExpr::Or(left, right) => {
-                match (left.as_ref(), right.as_ref()) {
-                    (BooleanExpr::Pattern(l), BooleanExpr::Pattern(r)) => {
-                        assert_eq!(l, "hello");
-                        assert_eq!(r, "world");
-                    }
-                    _ => panic!("Expected pattern nodes"),
+            BooleanExpr::Or(left, right) => match (left.as_ref(), right.as_ref()) {
+                (BooleanExpr::Pattern(l), BooleanExpr::Pattern(r)) => {
+                    assert_eq!(l, "hello");
+                    assert_eq!(r, "world");
                 }
-            }
+                _ => panic!("Expected pattern nodes"),
+            },
             _ => panic!("Expected OR expression"),
         }
     }

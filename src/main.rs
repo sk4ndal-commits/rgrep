@@ -1,4 +1,4 @@
-use rgrep::{run, follow, ExitStatus};
+use rgrep::{ExitStatus, follow, run};
 use std::process::ExitCode;
 
 mod cli;

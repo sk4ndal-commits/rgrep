@@ -7,7 +7,7 @@ use std::time::Duration;
 
 use crate::config::Config;
 use crate::fs_utils::{expand_inputs, is_binary_path};
-use crate::regex_utils::{build_regex, build_and_matchers, highlight_segments};
+use crate::regex_utils::{build_and_matchers, build_regex, highlight_segments};
 
 #[derive(Debug)]
 struct FollowEngine {
@@ -96,7 +96,6 @@ fn validate_follow_inputs(cfg: &Config, inputs: &[String]) -> Result<(), String>
 }
 
 fn get_initial_file_position(path: &str) -> Result<u64, String> {
-
     let one_hundred_milli_seconds = Duration::from_millis(100);
 
     loop {
@@ -188,7 +187,13 @@ fn process_new_file_content(
     Ok(fs::metadata(path)?.len())
 }
 
-fn process_line(cfg: &Config, engine: &mut FollowEngine, re: &regex::Regex, and_matchers: &Option<Vec<regex::Regex>>, line: String) {
+fn process_line(
+    cfg: &Config,
+    engine: &mut FollowEngine,
+    re: &regex::Regex,
+    and_matchers: &Option<Vec<regex::Regex>>,
+    line: String,
+) {
     let is_match = if let Some(ands) = and_matchers {
         ands.iter().all(|r| r.is_match(&line))
     } else {

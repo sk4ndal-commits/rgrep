@@ -15,8 +15,12 @@ use crate::config::Config;
 /// Reads up to 4 KiB from the file and returns true if a NUL byte is observed.
 /// The special path "-" is treated as stdin and considered non-binary.
 pub fn is_binary_path(path: &str) -> bool {
-    if path == "-" { return false; }
-    let Ok(mut f) = File::open(path) else { return false; };
+    if path == "-" {
+        return false;
+    }
+    let Ok(mut f) = File::open(path) else {
+        return false;
+    };
     let mut buf = [0u8; 4096];
     match f.read(&mut buf) {
         Ok(n) => buf[..n].iter().any(|&b| b == 0),
